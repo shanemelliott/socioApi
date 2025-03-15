@@ -7,7 +7,7 @@ async function fetchAllOpenCheckinSessions(eventId, secret) {
     const allOpenCheckinSessions = [];
 
     while (hasNextPage) {
-        console.log(`Fetching sessions with checkin status OPEN. Cursor: ${endCursor}`);
+        console.log(`Fetching sessions Cursor: ${endCursor}`);
         const query = `
         query sessionsConnection($eventId: Int!, $first: Int, $after: String, $filterParams: PublicSessionsFilterParamsInput) {
             sessionsConnection(eventId: $eventId, first: $first, after: $after, filterParams: $filterParams) {
@@ -40,7 +40,7 @@ async function fetchAllOpenCheckinSessions(eventId, secret) {
         hasNextPage = data.sessionsConnection.pageInfo.hasNextPage;
         endCursor = data.sessionsConnection.pageInfo.endCursor;
     }
-
+    console.log(allOpenCheckinSessions.length);
     return allOpenCheckinSessions;
 }
 
@@ -71,7 +71,7 @@ async function fetchSessionAttendees(eventId, sessionId, secret) {
         const variables = {
             eventId: eventId,
             sessionId: sessionId,
-            first: 100,
+            first: 2,
             after: endCursor
         };
 
@@ -108,4 +108,8 @@ fetchAllOpenCheckinSessions(eventId, secret)
         
 
     })
+   /*.then(sessions => {
+        console.log(sessions.length);
+    }
+    )*/
     .catch(error => console.error(error));

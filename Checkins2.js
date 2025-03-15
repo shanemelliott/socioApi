@@ -1,5 +1,8 @@
 const { secret, eventId } = require("./config");
 const { callGraphQLEndpoint } = require('./graphqlClient');
+const pLimit = require('p-limit').default;
+//I had to limit the number of concurrant sessions to 2 because the API was returning an error when I tried to fetch more than 2 sessions at a time
+const limit = pLimit(3); // Cannot exceed 2 
 
 async function fetchAllOpenCheckinSessions(eventId, secret) {
     let hasNextPage = true;
@@ -51,46 +54,43 @@ async function fetchSessionAttendees(eventId, sessionId, secret) {
 
     while (hasNextPage) {
         const query = `
-      query SessionAttendeesConnection ($eventId: Int!, $sessionId: Int!, $first: Int, $after: String) {
-        sessionAttendeesConnection(eventId: $eventId, sessionId: $sessionId first: $first, after: $after) {
-            edges {
-                node {
-                    externalId
-                    sessionCheckinStatus
-                    id
-                    profile {
-                    firstName
-                    lastName
+        query SessionAttendeesConnection ($eventId: Int!, $sessionId: Int!, $first: Int, $after: String) {
+            sessionAttendeesConnection(eventId: $eventId, sessionId: $sessionId, first: $first, after: $after) {
+                edges {
+                    node {
+                        externalId
+                        sessionCheckinStatus
+                        id
+                        profile {
+                            firstName
+                            lastName
+                        }
                     }
                 }
-            }
-        pageInfo {
-                endCursor
-                hasNextPage
+                pageInfo {
+                    endCursor
+                    hasNextPage
                 }
             }
         }
         `;
+        // Here is where I could not exceed 5 records at a time
         const variables = {
             eventId: eventId,
             sessionId: sessionId,
-            first: 10, //<<< Here is the limit issue. 
+            first: 10,
             after: endCursor
         };
 
         const data = await callGraphQLEndpoint(query, variables, secret);
         data.sessionAttendeesConnection.edges.forEach(edge => {
             allAttendees.push(edge.node);
-        }
-    );
-       // allAttendees.push(...data.sessionAttendeesConnection.nodes);
+        });
 
         hasNextPage = data.sessionAttendeesConnection.pageInfo.hasNextPage;
         endCursor = data.sessionAttendeesConnection.pageInfo.endCursor;
-         // Add a delay between consecutive queries to avoid hitting the rate limit
-         if (hasNextPage) {
-            await new Promise(resolve => setTimeout(resolve, 6000)); // 1-second delay
-        }
+
+       
     }
 
     return allAttendees;
@@ -99,22 +99,25 @@ async function fetchSessionAttendees(eventId, sessionId, secret) {
 // Example usage:
 fetchAllOpenCheckinSessions(eventId, secret)
     .then(async sessions => {
-        const sessionDetails = await Promise.all(sessions.map(async session => {
-            const attendees = await fetchSessionAttendees(eventId, session.id, secret);
-            return {
-                session: {
-                    id: session.id,
-                    name: session.name,
-                    checkinStatus: session.checkinStatus,
-                    startTime: session.startTime,
-                    endTime: session.endTime
-                },
-                attendees: attendees
-            };
-        }));
+        const sessionDetails = await Promise.all(sessions.map(session => 
+            limit(async () => {
+                const attendees = await fetchSessionAttendees(eventId, session.id, secret);
+                return {
+                    session: {
+                        id: session.id,
+                        name: session.name,
+                        checkinStatus: session.checkinStatus,
+                        startTime: session.startTime,
+                        endTime: session.endTime
+                    },
+                    attendees: attendees
+                };
+            })
+        ));
         return sessionDetails;
     })
     .then(sessionDetails => {
         console.log(sessionDetails);
+        console.log(sessionDetails.length);
     })
     .catch(error => console.error(error));
