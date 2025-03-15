@@ -67,10 +67,19 @@ fetchAllOpenCheckinSessions(eventId, secret)
 
 
 ```
+## Chekins2.js
+
+I noticed I was getting Cost errors using node, this file limits the concurrant executions of the api to 2 to enable calling it without the cost error.  I did this to identify the issue, but as exolained in GeckCheckins.js below, I am calling the socio api form php for production solution, so I am int expierencing this.
 
 ## API Reference
 For more information about the Socio API, please refer to the official documentation:
 
 [Socio API Documentation](https://public-api.socio.events/docs/2024-06/api/start)
+
+## GetCheckins.js
+
+This is an example for some endpoints I have interally to our org.  I am exposing the Socio API via an internal API to combine some internal logic needed for our use.  Please ignore. 
+
+
 
 
