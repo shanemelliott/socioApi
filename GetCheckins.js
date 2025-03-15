@@ -69,13 +69,13 @@ async function GetSessionAttendees(sessionId) {
 GetCheckinSessions()
 .then(async data => {
     const sessionDetails = await Promise.all(data.map(async session => {
-        //for each session get the seeion attendees
+        //for each session get the session attendees
         const attendees = await GetSessionAttendees(session.sessionId);
         session.attendees = attendees;
         return session;
     }
     ))
-    //for each session get log seeion attendees
+    //for each session log session details including attendees
     sessionDetails.forEach(session => {
         console.log(session);
     }
